@@ -1,0 +1,97 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.vivix.ai/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# List Voices
+
+> Lists voices visible to the current workspace: voices created in this workspace (cloned or designed), plus the public voices Vivix provides.
+
+
+
+## OpenAPI
+
+````yaml streaming-avatar/api-references/openapi.json GET /v1/voices
+openapi: 3.1.0
+info:
+  title: Vivix Streaming Avatar API
+  version: 1.0.0
+  description: REST endpoints for Streaming Avatar sessions, voices, and characters.
+servers:
+  - url: https://api.vivix.ai
+security:
+  - bearerAuth: []
+paths:
+  /v1/voices:
+    get:
+      summary: List Voices
+      description: >-
+        Lists voices visible to the current workspace: voices created in this
+        workspace (cloned or designed), plus the public voices Vivix provides.
+      operationId: listVoices
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - message
+                  - data
+                properties:
+                  code:
+                    type: integer
+                    description: '`0` on success; any other value is an error code.'
+                  message:
+                    type: string
+                    description: '`success`, or an English error description.'
+                  data:
+                    type: object
+                    properties:
+                      voices:
+                        type: array
+                        description: Visible voices.
+                        items:
+                          type: object
+                          properties:
+                            voice_id:
+                              type: string
+                              description: Voice id (shaped like voice\_…).
+                            name:
+                              type: string
+                              description: Display name.
+                            language:
+                              type: string
+                              description: >-
+                                One of `zh` (Chinese), `en` (English), `fr`
+                                (French), `de` (German), `ja` (Japanese), `ko`
+                                (Korean), `ru` (Russian), `pt` (Portuguese),
+                                `th` (Thai), `id` (Indonesian), `vi`
+                                (Vietnamese), `it` (Italian), `es` (Spanish),
+                                `ms` (Malay), `fil` (Filipino), `ar` (Arabic),
+                                or an empty string.
+                          required:
+                            - voice_id
+                            - name
+                            - language
+                    required:
+                      - voices
+              example:
+                code: 0
+                message: success
+                data:
+                  voices:
+                    - voice_id: voice_9f1c2a7b
+                      name: Studio Host
+                      language: zh
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Your Vivix API key. Keep it on your server.
+
+````
+
+This documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.
