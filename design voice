@@ -1,0 +1,186 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.vivix.ai/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# Design Voice
+
+> Creates a voice from a text description, with no reference audio. Pass the returned `voice_id` as `pipeline_config.tts_config.tts_voice_id` when you start a session.
+
+> **Use the voice when you create a session**
+>
+> ```json theme={null}
+> {
+>   "pipeline_config": {
+>     "tts_config": {
+>       "tts_voice_id": "voice_8f2c1a4e"
+>     }
+>   }
+> }
+> ```
+>
+> Only the `tts_voice_id` is required: the service fills `tts_provider` / `tts_model_id` for that voice.
+
+> **Is this the same as Clone Voice?**
+>
+> Both endpoints return a usable voice in the same shape. The difference is where the voice comes from:
+>
+> | | Clone Voice | Design Voice |
+> | - | - | - |
+> | Input | Reference audio (`file_id`) | Text description (`instruction`) |
+> | You need to record audio first | Yes | No |
+> | Extra response field | — | `preview_audio_url` |
+> | Billing against `max_voices` | Yes | Yes, same quota |
+>
+> They share one voice quota, so a designed voice counts against the same `max_voices` limit as a cloned one.
+
+> **Writing the instruction**
+>
+> The `instruction` describes the voice, not the content. Keep it concrete and about delivery:
+>
+> ```text wrap theme={null}
+> A warm female narrator in her thirties, slightly husky, unhurried pace, gentle emphasis on the ends of sentences.
+> ```
+
+> **Preview audio**
+>
+> `preview_audio_url` is a permanent, unauthenticated WAV (mono, 16 kHz) you can play directly in an `<audio>` element or download.
+>
+> The field is **absent** when the preview could not be generated. A missing preview does **not** mean the voice failed — the voice is still usable for sessions. There is no status field to poll: the response itself means the voice is ready.
+
+> **Errors**
+>
+> Error responses use the same `{code, message, data}` envelope; a non-zero `code` identifies the error.
+>
+> | Case | Error code |
+> | - | - |
+> | Missing `instruction` or `name` | `20003 missing required parameter` |
+> | Missing `sample_text` for a language other than `zh` / `en` | `20003 missing required parameter` |
+> | `instruction` or `sample_text` exceeds 1500 characters | `20004 invalid parameter` |
+> | `name` exceeds 100 characters | `20004 invalid parameter` |
+> | `language` is invalid | `20004 invalid parameter` |
+> | The voice quota (`max_voices`) is reached (HTTP 403) | `30010 voice clone quota exceeded` |
+> | The design provider call failed (HTTP 502) | `30007 voice clone provider failed` |
+> | The API key is missing or invalid | `10001 missing api key` or `10003 invalid api key` |
+
+
+## OpenAPI
+
+````yaml streaming-avatar/api-references/openapi.json POST /v1/voices/design
+openapi: 3.1.0
+info:
+  title: Vivix Streaming Avatar API
+  version: 1.0.0
+  description: REST endpoints for Streaming Avatar sessions, voices, and characters.
+servers:
+  - url: https://api.vivix.ai
+security:
+  - bearerAuth: []
+paths:
+  /v1/voices/design:
+    post:
+      summary: Design Voice
+      description: >-
+        Creates a voice from a text description, with no reference audio. Pass
+        the returned `voice_id` as `pipeline_config.tts_config.tts_voice_id`
+        when you start a session.
+      operationId: designVoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                instruction:
+                  type: string
+                  description: >-
+                    Describes the voice to synthesize: timbre, age, speaking
+                    style, pace. At most 1500 characters. Required.
+                name:
+                  type: string
+                  description: Display name, at most 100 characters. Required.
+                sample_text:
+                  type: string
+                  description: >-
+                    Text the voice speaks in the generated preview. At most 1500
+                    characters. Required when `language` is neither Chinese nor
+                    English; optional for `zh` and `en`, where the service
+                    supplies a default.
+                language:
+                  type: string
+                  description: >-
+                    Language of `sample_text`: `zh` (Chinese), `en` (English),
+                    `fr` (French), `de` (German), `ja` (Japanese), `ko`
+                    (Korean), `ru` (Russian), `pt` (Portuguese), `th` (Thai),
+                    `id` (Indonesian), `vi` (Vietnamese), `it` (Italian), `es`
+                    (Spanish), `ms` (Malay), `fil` (Filipino), `ar` (Arabic).
+              required:
+                - instruction
+                - name
+            example:
+              instruction: A mature male news anchor with a deep, steady voice
+              sample_text: Welcome to tonight's broadcast.
+              language: zh
+              name: Studio Anchor
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - message
+                  - data
+                properties:
+                  code:
+                    type: integer
+                    description: '`0` on success; any other value is an error code.'
+                  message:
+                    type: string
+                    description: '`success`, or an English error description.'
+                  data:
+                    type: object
+                    properties:
+                      voice_id:
+                        type: string
+                        description: >-
+                          Voice id (shaped like `voice_…`). Pass it unchanged as
+                          `tts_voice_id`.
+                      name:
+                        type: string
+                        description: Display name.
+                      language:
+                        type: string
+                        description: Language sent on create; empty string when omitted.
+                      preview_audio_url:
+                        type: string
+                        description: >-
+                          Public URL of the generated preview audio, playable
+                          directly in an `<audio>` element. WAV (mono, 16 kHz).
+                          Present only when the preview was generated; if it is
+                          absent the voice is still usable.
+                    required:
+                      - voice_id
+                      - name
+                      - language
+              example:
+                code: 0
+                message: success
+                data:
+                  voice_id: voice_8f2c1a4e-5d67-4b03-a9f1-2e6c7b0d5a94
+                  name: Studio Anchor
+                  language: zh
+                  preview_audio_url: >-
+                    https://static.vivi-x.ai/voice_preview/2026/10/13/8f2c1a4e5d674b03/a9f12e6c7b0d5a94.wav
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Your Vivix API key. Keep it on your server.
+
+````
+
+This documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.
