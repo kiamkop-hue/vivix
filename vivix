@@ -1,0 +1,1299 @@
+> ## Documentation Index
+> Fetch the complete documentation index at: https://docs.vivix.ai/llms.txt
+> Use this file to discover all available pages before exploring further.
+
+# Create Session
+
+> Create a live session from an image, a Persona, and a voice. Returns session settings, a WebSocket control credential, and RTC media credentials. For a minimal working request, see the [Quickstart](/streaming-avatar/get-started/quickstart).
+
+> **Connection, duration, and errors**
+>
+> The response includes control and media credentials. See [Sessions](https://docs.vivix.ai/streaming-avatar/api-references/sessions#connect-and-control) to connect, [session management](https://docs.vivix.ai/streaming-avatar/integrate/sessions.md) for automatic closure, and [Errors](https://docs.vivix.ai/streaming-avatar/api-references/sessions#errors) for error codes.
+
+
+## OpenAPI
+
+````yaml streaming-avatar/api-references/openapi.json POST /v1/realtime-avatar/sessions
+openapi: 3.1.0
+info:
+  title: Vivix Streaming Avatar API
+  version: 1.0.0
+  description: REST endpoints for Streaming Avatar sessions, voices, and characters.
+servers:
+  - url: https://api.vivix.ai
+security:
+  - bearerAuth: []
+paths:
+  /v1/realtime-avatar/sessions:
+    post:
+      summary: Create Session
+      description: >-
+        Create a live session from an image, a Persona, and a voice. Returns
+        session settings, a WebSocket control credential, and RTC media
+        credentials. For a minimal working request, see the
+        [Quickstart](/streaming-avatar/get-started/quickstart).
+      operationId: createSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model:
+                  type: string
+                  description: Use `vivix-a1-stream`.
+                idempotency_key:
+                  type: string
+                  description: >-
+                    Optional key for retrying session creation. Reuse the same
+                    key when retrying the same request; use a new key for a new
+                    session.
+                session:
+                  type: object
+                  description: >-
+                    Opening avatar and source image. Omit this object for a
+                    single avatar with one image. Use `session.update` to change
+                    the selected avatar or image during the session.
+                  properties:
+                    mode:
+                      type: string
+                      description: >-
+                        Session mode. Defaults to `video_avatar`, which streams
+                        avatar video, speech, and text events.
+                      enum:
+                        - video_avatar
+                      default: video_avatar
+                    active_avatar_id:
+                      type: string
+                      description: >-
+                        Initial avatar ID. Omit when supplying one avatar;
+                        specify it when supplying multiple avatars.
+                    source_image_id:
+                      type: string
+                      description: >-
+                        Opening image ID. Omit to use the active avatar’s
+                        default image, or its only image. Set this when no
+                        default image can be selected.
+                output:
+                  type: object
+                  description: >-
+                    Required video output settings. Set the aspect ratio and
+                    resolution when creating the session.
+                  properties:
+                    aspect_ratio:
+                      type: string
+                      description: >-
+                        Requested avatar video aspect ratio. Supported values
+                        are `9:16` and `16:9`. Use a starting image with the
+                        same aspect ratio—a mismatched image will noticeably
+                        degrade video quality.
+                    resolution:
+                      type: string
+                      description: >-
+                        Requested avatar video resolution. Supported values are
+                        `480p` and `720p`.
+                avatars:
+                  type: array
+                  description: >-
+                    Available characters. Supply at least one, with unique
+                    `avatar_id` values. Each avatar selected for video needs a
+                    source image. Configure the shared voice in
+                    `pipeline_config.tts_config`.
+                  items:
+                    type: object
+                    properties:
+                      avatar_id:
+                        type: string
+                        description: >-
+                          Caller-defined avatar identifier, unique within the
+                          session.
+                      persona:
+                        type: string
+                        description: >-
+                          Describe the character's identity, personality,
+                          speaking style, response habits, movement preferences,
+                          and listening behavior in plain language or Markdown.
+                          Vivix uses this Persona to prepare the character's
+                          behavior automatically. See [Write a
+                          Persona](/streaming-avatar/character/persona).
+                        minLength: 1
+                      voice:
+                        type: object
+                        description: >-
+                          Optional per-avatar TTS configuration for multi-avatar
+                          sessions that require different voices. Provide
+                          `provider`, `provider_voice_id`, and `model`. For the
+                          normal session-wide voice path, omit this object and
+                          configure `pipeline_config.tts_config`. A session TTS
+                          configuration takes precedence over every per-avatar
+                          voice.
+                        properties:
+                          provider:
+                            type: string
+                            description: >-
+                              TTS backend, such as
+                              `qwen-audio-3.0-tts-flash_ws`, `elevenlabs`, or
+                              `qwen3tts`. Required with `provider_voice_id` and
+                              `model`.
+                          provider_voice_id:
+                            type: string
+                            description: >-
+                              Provider-side voice or style id. Required with
+                              `provider` and `model`.
+                          model:
+                            type: string
+                            description: >-
+                              Provider TTS model ID. Required with `provider`
+                              and `provider_voice_id`.
+                          speed:
+                            type: number
+                            description: >-
+                              Speech speed multiplier. The valid range is `0.7`
+                              to `1.2`.
+                        required:
+                          - provider
+                          - provider_voice_id
+                          - model
+                      visual:
+                        type: object
+                        description: >-
+                          Visual rendering settings. Required when this avatar
+                          is used for video rendering.
+                        properties:
+                          source_images:
+                            type: array
+                            description: >-
+                              Registered source images available for this
+                              avatar. Required when image-based avatar video
+                              rendering is used.
+                            items:
+                              type: object
+                              description: >-
+                                One source image that can be selected for avatar
+                                video rendering.
+                              properties:
+                                source_image_id:
+                                  type: string
+                                  description: >-
+                                    Caller-defined source image identifier,
+                                    unique within the avatar.
+                                url:
+                                  type: string
+                                  description: >-
+                                    Publicly accessible HTTPS URL of the source
+                                    image. Its aspect ratio should match
+                                    `output.aspect_ratio` (`9:16` or `16:9`)—a
+                                    mismatched image will noticeably degrade
+                                    video quality.
+                                description:
+                                  type: string
+                                  description: >-
+                                    Optional description of the person, pose,
+                                    and scene.
+                                media_type:
+                                  type: string
+                                  description: >-
+                                    Image media type, such as `image/png` or
+                                    `image/jpeg`.
+                                opening:
+                                  type: object
+                                  description: >-
+                                    Optional opening speech or action. Supply
+                                    `dialogue`, `action`, or both. It runs when
+                                    this image is selected and begins rendering.
+                                  properties:
+                                    dialogue:
+                                      type: string
+                                      description: Exact opening words to synthesize.
+                                    action:
+                                      type: object
+                                      properties:
+                                        prompt:
+                                          type: string
+                                          description: >-
+                                            Visual motion prompt for the opening
+                                            action.
+                                        duration_ms:
+                                          type: integer
+                                          minimum: 1
+                                          description: Opening action duration in milliseconds.
+                                      required:
+                                        - prompt
+                                        - duration_ms
+                                      description: >-
+                                        Opening movement, described by a prompt
+                                        and duration.
+                                    starting_at:
+                                      type: integer
+                                      minimum: 0
+                                      default: 0
+                                      description: >-
+                                        Delay in milliseconds before the opening
+                                        begins, measured from the first frame
+                                        becoming available.
+                              required:
+                                - source_image_id
+                                - media_type
+                                - url
+                          default_source_image_id:
+                            type: string
+                            description: >-
+                              Default image ID. Omit when the avatar has one
+                              source image; otherwise set this or
+                              `session.source_image_id`.
+                        required:
+                          - source_images
+                    required:
+                      - avatar_id
+                      - persona
+                  minItems: 1
+                pipeline_config:
+                  type: object
+                  description: >-
+                    Session-wide speech recognition, speech synthesis, dialogue
+                    model, and audio rendering settings. These settings are
+                    fixed at session creation.
+                  properties:
+                    tag_audio_enabled:
+                      type: boolean
+                      description: >-
+                        Play a short vocal cue such as “mm” or “hmm” before the
+                        main answer. Defaults to `false`. Also configure the
+                        opening in the Persona’s Speaking Style section; see
+                        [Short vocal
+                        cues](/streaming-avatar/interaction/acknowledgement).
+                    tts_config:
+                      type: object
+                      properties:
+                        tts_voice_id:
+                          type: string
+                          description: >-
+                            Built-in voice ID or Vivix cloned `voice_id`.
+                            Required when `tts_config` is supplied.
+                        tts_provider:
+                          type: string
+                          description: >-
+                            Speech service. For built-in Qwen Audio voices,
+                            defaults to `qwen-audio-3.0-tts-flash_ws`. Omit for
+                            Vivix cloned voices; specify for other services.
+                        tts_model_id:
+                          type: string
+                          description: >-
+                            Speech model. For built-in Qwen Audio voices,
+                            defaults to `qwen-audio-3.0-tts-flash`. Omit for
+                            Vivix cloned voices; specify for other services.
+                        tts_endpoint:
+                          type: string
+                          description: >-
+                            Custom speech-service endpoint. Omit for built-in
+                            and Vivix cloned voices.
+                        tts_api_key:
+                          type: string
+                          description: >-
+                            Your speech-service API key, when using your own
+                            service credentials. Built-in voices need no
+                            separate key.
+                        payload:
+                          type: object
+                          description: >-
+                            Additional parameters supported by the selected
+                            speech service. See [Speech
+                            synthesis](/streaming-avatar/integrate/speech-synthesis).
+                      required:
+                        - tts_voice_id
+                      description: >-
+                        Session-wide TTS configuration. It takes precedence over
+                        every `avatars[].voice`.
+                    asr_config:
+                      type: object
+                      properties:
+                        provider:
+                          type: string
+                          description: >-
+                            Recognition service: `doubao` or `nova-3`. Required
+                            when supplying `asr_config`; omit the whole object
+                            to use the default.
+                        language:
+                          type: string
+                          description: >-
+                            Optional. Examples: `zh-CN` or `en-US` for Doubao;
+                            `en` for Nova. Controls recognition language, not
+                            the reply language.
+                      required:
+                        - provider
+                      description: >-
+                        Advanced override. Omit it to use the platform default,
+                        `doubao`. Set `provider` (`doubao` for multilingual, or
+                        `nova-3` for English-only) and optional `language`. See
+                        [`asr_config`](/streaming-avatar/integrate/speech-recognition).
+                    llm_config:
+                      type: object
+                      properties:
+                        llm_backend:
+                          type: string
+                          description: Optional; only `openai` is supported.
+                        llm_base_url:
+                          type: string
+                          description: >-
+                            OpenAI-compatible base URL. Supply with `llm_model`
+                            to use a custom dialogue service.
+                        llm_model:
+                          type: string
+                          description: Optional custom model name.
+                        llm_api_key:
+                          type: string
+                          description: >-
+                            Your dialogue-service API key, when required by the
+                            custom service.
+                        llm_temperature:
+                          type: number
+                          description: >-
+                            Optional generation temperature; use the range
+                            supported by the model.
+                        llm_max_output_tokens:
+                          type: integer
+                          description: Optional generated-token limit, not a word count.
+                        llm_extra_payload:
+                          type: string
+                          description: >-
+                            Optional JSON-encoded object string; do not supply a
+                            nested object.
+                      description: >-
+                        Optional dialogue-model configuration. Set
+                        `llm_base_url` and `llm_model` for a custom service, or
+                        override only generation parameters. See [Dialogue model
+                        configuration](/streaming-avatar/integrate/dialogue-model)
+                        for field types and examples.
+                    a2a_config:
+                      type: object
+                      description: >-
+                        Render the avatar from audio published by your
+                        application. See [Pure rendering
+                        mode](/streaming-avatar/integrate/pure-rendering).
+                      properties:
+                        enable_a2a:
+                          type: boolean
+                          default: false
+                          description: >-
+                            Set `true` to drive the avatar with your
+                            application’s live audio.
+                        provider:
+                          type: string
+                          description: >-
+                            Use `passthrough` to render the audio you publish to
+                            the RTC room.
+                          enum:
+                            - passthrough
+                conversation:
+                  type: object
+                  description: >-
+                    Initial conversational defaults for tools, turn handling,
+                    and response generation.
+                  properties:
+                    tools:
+                      type: array
+                      description: Tools available to responses in the session.
+                      items:
+                        type: object
+                        description: >-
+                          One tool definition. Only function tools are
+                          documented for v1.
+                        properties:
+                          type:
+                            type: string
+                            description: Use `function`.
+                          name:
+                            type: string
+                            description: Function name available to the response planner.
+                          description:
+                            type: string
+                            description: >-
+                              Human-readable description of when the tool should
+                              be used.
+                          parameters:
+                            type: object
+                            description: JSON Schema object describing function arguments.
+                        required:
+                          - type
+                          - name
+                    response_defaults:
+                      type: object
+                      description: Default response-generation settings for later turns.
+                      properties:
+                        temperature:
+                          type: number
+                          description: >-
+                            Sampling temperature for generated response text.
+                            Supported range is `0` to `2`.
+                        max_output_tokens:
+                          type: integer
+                          description: Maximum generated text tokens for a response.
+                    turn_detection:
+                      type: object
+                      description: Default turn handling for real-time user input.
+                      properties:
+                        type:
+                          type: string
+                          description: >-
+                            `manual` means the client starts responses
+                            explicitly. `server_vad` means the server detects
+                            turn boundaries from incoming user audio.
+                        silence_duration_ms:
+                          type: integer
+                          description: >-
+                            Compatibility field. Do not use it to tune actual
+                            end-of-utterance timing. See [Speech recognition
+                            configuration](/streaming-avatar/integrate/speech-recognition)
+                            for recognition and turn-detection settings.
+                      required:
+                        - type
+                    input_audio_transcription:
+                      type: object
+                      description: Default transcription settings for user audio input.
+                      properties:
+                        enabled:
+                          type: boolean
+                          description: Whether user audio should be transcribed.
+                        language:
+                          type: string
+                          description: >-
+                            BCP-47 `language` code, or `auto` for automatic
+                            `language` detection.
+                assets:
+                  type: object
+                  description: >-
+                    Reusable image references, audio, speech text, and motion
+                    prompts. Use `images` for props or products in [object
+                    interaction](/streaming-avatar/interaction/object-interaction);
+                    put the character’s starting images in
+                    `avatars[].visual.source_images`. Asset IDs must be unique
+                    across all asset types.
+                  properties:
+                    images:
+                      type: array
+                      description: >-
+                        Reference images for props or products. These preserve
+                        the object’s appearance; they do not replace the
+                        character’s starting image or place the object in the
+                        scene by themselves.
+                      items:
+                        type: object
+                        properties:
+                          asset_id:
+                            type: string
+                            description: >-
+                              Object reference ID, unique across session assets.
+                              Use `OBJ_0`, `OBJ_1`, and so on.
+                          url:
+                            type: string
+                            description: Publicly accessible HTTPS image URL.
+                          mime_type:
+                            type: string
+                            description: >-
+                              Image MIME type, such as `image/png` or
+                              `image/jpeg`.
+                          description:
+                            type: string
+                            description: >-
+                              Optional visual description. If provided, include
+                              the matching reference tag, such as `a dark gray
+                              cylindrical speaker<OBJ_0>` for `asset_id:
+                              "OBJ_0"`. See [Object
+                              interaction](/streaming-avatar/interaction/object-interaction).
+                        required:
+                          - asset_id
+                          - url
+                    audio:
+                      type: array
+                      description: >-
+                        Reusable audio files that can be referenced by scripted
+                        vocal output.
+                      items:
+                        type: object
+                        description: One reusable audio asset.
+                        properties:
+                          asset_id:
+                            type: string
+                            description: Caller-defined audio asset id.
+                          url:
+                            type: string
+                            description: >-
+                              HTTPS URL for the audio file. The URL must be
+                              directly fetchable by Vivix without custom request
+                              headers.
+                          mime_type:
+                            type: string
+                            description: >-
+                              Audio MIME type. Supported values are `audio/wav`
+                              and `audio/mpeg`.
+                        required:
+                          - asset_id
+                          - url
+                    speech_text:
+                      type: array
+                      description: >-
+                        Reusable exact speech text that can be referenced by
+                        scripted vocal output.
+                      items:
+                        type: object
+                        description: One reusable speech text asset.
+                        properties:
+                          asset_id:
+                            type: string
+                            description: Caller-defined speech text asset id.
+                          text:
+                            type: string
+                            description: >-
+                              Exact text to synthesize and stream through output
+                              text events when used in `response.script`.
+                        required:
+                          - asset_id
+                          - text
+                    visual_prompts:
+                      type: array
+                      description: >-
+                        Reusable visual instructions that can be referenced by
+                        scripted visual output.
+                      items:
+                        type: object
+                        description: One reusable visual prompt asset.
+                        properties:
+                          asset_id:
+                            type: string
+                            description: Caller-defined visual prompt asset id.
+                          prompt:
+                            type: string
+                            description: >-
+                              Instruction for avatar movement, posture, gaze,
+                              gesture, or presentation.
+                        required:
+                          - asset_id
+                          - prompt
+                delivery:
+                  type: object
+                  description: >-
+                    Media transport and delivery settings. Defaults to TRTC when
+                    omitted.
+                  properties:
+                    media:
+                      type: object
+                      description: >-
+                        Selects how the client sends and receives realtime
+                        media.
+                      properties:
+                        transport:
+                          type: string
+                          description: >-
+                            Media transport requested for the session. Use
+                            `trtc` for TRTC or `agora` for Agora. If omitted, it
+                            defaults to TRTC. The response returns the
+                            corresponding provider-specific join details under
+                            `delivery.media.trtc` or `delivery.media.agora`.
+                max_duration_seconds:
+                  type: integer
+                  description: >-
+                    Session time limit in seconds; minimum `4`. The standard
+                    default is 20 minutes (`1200` seconds), subject to your
+                    workspace’s session-duration limit. Check `expires_at` in
+                    the response for the actual expiry.
+                  minimum: 4
+                auto_close:
+                  type: object
+                  description: >-
+                    Automatic close policy fixed when the session is created.
+                    The response returns the effective values after platform
+                    defaults are applied.
+                  properties:
+                    disconnected_timeout_seconds:
+                      type: integer
+                      description: >-
+                        Close after this many seconds without a control
+                        WebSocket connection. Omit to use the default policy,
+                        set `0` to disable, or use `10`–`3600`. A nonzero value
+                        cannot exceed the session duration.
+                    interaction_idle_timeout_seconds:
+                      type: integer
+                      description: >-
+                        Close after this many seconds without accepted client
+                        interaction or detected user speech. Set `0` to disable
+                        or use `30`–`3600`. A nonzero value cannot exceed the
+                        session duration. Ping/Pong does not count as
+                        interaction.
+                recording_mode:
+                  type: string
+                  description: '`on` or `off`. Send `off` to disable recording.'
+              required:
+                - model
+                - avatars
+                - output
+            example:
+              model: vivix-a1-stream
+              output:
+                aspect_ratio: '9:16'
+                resolution: 720p
+              avatars:
+                - avatar_id: companion
+                  persona: >-
+                    You are a warm, curious conversation companion. Speak in
+                    relaxed English and keep everyday replies brief. Acknowledge
+                    corrections without making excuses. Use small smiles and
+                    gentle nods, then let your hands rest while listening.
+                  visual:
+                    source_images:
+                      - source_image_id: front
+                        url: >-
+                          https://static.vivi-x.ai/images/2026/07/20/b9b8e89651cd24ad.png
+                        media_type: image/png
+                        description: >-
+                          A young woman with curly black hair and a pink shirt,
+                          facing the camera in a softly lit room.
+              pipeline_config:
+                tts_config:
+                  tts_voice_id: longanhuan_v3.6
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - message
+                  - data
+                properties:
+                  code:
+                    type: integer
+                    description: '`0` on success; any other value is an error code.'
+                  message:
+                    type: string
+                    description: '`success`, or an English error description.'
+                  data:
+                    type: object
+                    properties:
+                      session_id:
+                        type: string
+                        description: Identifier for the created avatar session.
+                      status:
+                        type: string
+                        description: >-
+                          Current session status, such as `active`, `closing`,
+                          `closed`, or `failed`.
+                      auto_close:
+                        type: object
+                        description: >-
+                          The effective policy snapshotted when the session was
+                          first created.
+                        properties:
+                          disconnected_timeout_seconds:
+                            type: integer
+                            description: >-
+                              The effective no-control-WSS timeout in seconds. 0
+                              means disabled.
+                          interaction_idle_timeout_seconds:
+                            type: integer
+                            description: >-
+                              The effective interaction idle timeout in seconds.
+                              0 means disabled.
+                        required:
+                          - disconnected_timeout_seconds
+                          - interaction_idle_timeout_seconds
+                      session:
+                        type: object
+                        description: >-
+                          Effective mutable session state after defaults and
+                          validation are applied.
+                        properties:
+                          mode:
+                            type: string
+                            description: 'Session mode: `video_avatar`.'
+                            enum:
+                              - video_avatar
+                          active_avatar_id:
+                            type: string
+                            description: >-
+                              Avatar rendered in the video and used for
+                              subsequent responses.
+                          source_image_id:
+                            type: string
+                            description: >-
+                              ID of the source image currently used for avatar
+                              video.
+                        required:
+                          - mode
+                          - active_avatar_id
+                      control:
+                        type: object
+                        description: Connection details for the session control channel.
+                        properties:
+                          url:
+                            type: string
+                            description: >-
+                              Absolute WSS URL for the control channel, carrying
+                              client control events and server state events. The
+                              path is `/v1/realtime-avatar/control` and the
+                              session is identified by the `session_id` query
+                              parameter; always connect to the exact URL
+                              returned in this field.
+                          client_secret:
+                            type: string
+                            description: >-
+                              Control-channel credential for this session.
+                              Browsers send it as the `token` query parameter;
+                              server clients may use a Bearer header. Valid
+                              until the session ends, including for reconnects.
+                              See [Connection
+                              example](/streaming-avatar/api-references/sessions#connect-and-control).
+                        required:
+                          - url
+                          - client_secret
+                      output:
+                        type: object
+                        description: >-
+                          Effective avatar video output settings after defaults
+                          and limits are applied. Present when `session.mode` is
+                          `video_avatar`.
+                        properties:
+                          aspect_ratio:
+                            type: string
+                            description: >-
+                              Effective avatar video aspect ratio, either `9:16`
+                              or `16:9`.
+                          resolution:
+                            type: string
+                            description: >-
+                              Effective avatar video resolution, either `480p`
+                              or `720p`.
+                        required:
+                          - aspect_ratio
+                          - resolution
+                      assets:
+                        type: object
+                        description: >-
+                          Reusable image references, audio, speech text, and
+                          motion prompts. Use `images` for props or products in
+                          [object
+                          interaction](/streaming-avatar/interaction/object-interaction);
+                          put the character’s starting images in
+                          `avatars[].visual.source_images`. Asset IDs must be
+                          unique across all asset types.
+                        properties:
+                          images:
+                            type: array
+                            description: >-
+                              Reference images for props or products. These
+                              preserve the object’s appearance; they do not
+                              replace the character’s starting image or place
+                              the object in the scene by themselves.
+                            items:
+                              type: object
+                              properties:
+                                asset_id:
+                                  type: string
+                                  description: >-
+                                    Object reference ID, unique across session
+                                    assets. Use `OBJ_0`, `OBJ_1`, and so on.
+                                url:
+                                  type: string
+                                  description: Publicly accessible HTTPS image URL.
+                                mime_type:
+                                  type: string
+                                  description: >-
+                                    Image MIME type, such as `image/png` or
+                                    `image/jpeg`.
+                                description:
+                                  type: string
+                                  description: >-
+                                    Optional visual description. If provided,
+                                    include the matching reference tag, such as
+                                    `a dark gray cylindrical speaker<OBJ_0>` for
+                                    `asset_id: "OBJ_0"`. See [Object
+                                    interaction](/streaming-avatar/interaction/object-interaction).
+                              required:
+                                - asset_id
+                                - url
+                          audio:
+                            type: array
+                            description: >-
+                              Reusable audio assets for
+                              `response.script.vocal.type: "audio_asset"`.
+                            items:
+                              type: object
+                              description: One reusable audio asset.
+                              properties:
+                                asset_id:
+                                  type: string
+                                  description: Caller-defined audio asset id.
+                                url:
+                                  type: string
+                                  description: >-
+                                    HTTPS URL for the audio file. The URL must
+                                    be directly fetchable by Vivix without
+                                    custom request headers.
+                                mime_type:
+                                  type: string
+                                  description: >-
+                                    Audio MIME type. Supported values are
+                                    `audio/wav` and `audio/mpeg`.
+                              required:
+                                - asset_id
+                                - url
+                          speech_text:
+                            type: array
+                            description: >-
+                              Reusable exact speech text assets for
+                              `response.script.vocal.type: "speech_asset"`.
+                            items:
+                              type: object
+                              description: One reusable speech text asset.
+                              properties:
+                                asset_id:
+                                  type: string
+                                  description: Caller-defined speech text asset id.
+                                text:
+                                  type: string
+                                  description: >-
+                                    Exact text to synthesize and stream through
+                                    output text events when used in
+                                    `response.script`.
+                              required:
+                                - asset_id
+                                - text
+                          visual_prompts:
+                            type: array
+                            description: >-
+                              Reusable visual prompt assets for
+                              `response.script.visual.visual_prompt_asset_id`.
+                            items:
+                              type: object
+                              description: One reusable visual prompt asset.
+                              properties:
+                                asset_id:
+                                  type: string
+                                  description: Caller-defined visual prompt asset id.
+                                prompt:
+                                  type: string
+                                  description: >-
+                                    Instruction for avatar movement, posture,
+                                    gaze, gesture, or presentation.
+                              required:
+                                - asset_id
+                                - prompt
+                      conversation:
+                        type: object
+                        description: >-
+                          Effective conversation defaults after server limits
+                          and defaults are applied. Same structure and meaning
+                          as the `conversation` request field.
+                        properties:
+                          tools:
+                            type: array
+                            description: Tools available to responses in the session.
+                            items:
+                              type: object
+                              description: >-
+                                One tool definition. Only function tools are
+                                documented for v1.
+                              properties:
+                                type:
+                                  type: string
+                                  description: Use `function`.
+                                name:
+                                  type: string
+                                  description: >-
+                                    Function name available to the response
+                                    planner.
+                                description:
+                                  type: string
+                                  description: >-
+                                    Human-readable description of when the tool
+                                    should be used.
+                                parameters:
+                                  type: object
+                                  description: >-
+                                    JSON Schema object describing function
+                                    arguments.
+                              required:
+                                - type
+                                - name
+                          response_defaults:
+                            type: object
+                            description: >-
+                              Default response-generation settings for later
+                              turns.
+                            properties:
+                              temperature:
+                                type: number
+                                description: >-
+                                  Sampling temperature for generated response
+                                  text. Supported range is `0` to `2`.
+                              max_output_tokens:
+                                type: integer
+                                description: Maximum generated text tokens for a response.
+                          turn_detection:
+                            type: object
+                            description: Default turn handling for real-time user input.
+                            properties:
+                              type:
+                                type: string
+                                description: >-
+                                  `manual` means the client starts responses
+                                  explicitly. `server_vad` means the server
+                                  detects turn boundaries from incoming user
+                                  audio.
+                              silence_duration_ms:
+                                type: integer
+                                description: >-
+                                  Compatibility field. Do not use it to tune
+                                  actual end-of-utterance timing. See [Speech
+                                  recognition
+                                  configuration](/streaming-avatar/integrate/speech-recognition)
+                                  for recognition and turn-detection settings.
+                            required:
+                              - type
+                          input_audio_transcription:
+                            type: object
+                            description: >-
+                              Default transcription settings for user audio
+                              input.
+                            properties:
+                              enabled:
+                                type: boolean
+                                description: Whether user audio should be transcribed.
+                              language:
+                                type: string
+                                description: >-
+                                  BCP-47 `language` code, or `auto` for
+                                  automatic `language` detection.
+                      avatars:
+                        type: array
+                        description: >-
+                          Effective avatar definitions in the session. Same
+                          structure and meaning as the `avatars` request field.
+                        items:
+                          type: object
+                          properties:
+                            avatar_id:
+                              type: string
+                              description: >-
+                                Caller-defined avatar identifier, unique within
+                                the session.
+                            persona:
+                              type: string
+                              description: >-
+                                Describe the character's identity, personality,
+                                speaking style, response habits, movement
+                                preferences, and listening behavior in plain
+                                language or Markdown. Vivix uses this Persona to
+                                prepare the character's behavior automatically.
+                                See [Write a
+                                Persona](/streaming-avatar/character/persona).
+                            voice:
+                              type: object
+                              description: >-
+                                Optional per-avatar TTS configuration for
+                                multi-avatar sessions that require different
+                                voices. Provide `provider`, `provider_voice_id`,
+                                and `model`. For the normal session-wide voice
+                                path, omit this object and configure
+                                `pipeline_config.tts_config`. A session TTS
+                                configuration takes precedence over every
+                                per-avatar voice.
+                              properties:
+                                provider:
+                                  type: string
+                                  description: >-
+                                    TTS backend, such as
+                                    `qwen-audio-3.0-tts-flash_ws`, `elevenlabs`,
+                                    or `qwen3tts`. Required with
+                                    `provider_voice_id` and `model`.
+                                provider_voice_id:
+                                  type: string
+                                  description: >-
+                                    Provider-side voice or style id. Required
+                                    with `provider` and `model`.
+                                model:
+                                  type: string
+                                  description: >-
+                                    Provider TTS model ID. Required with
+                                    `provider` and `provider_voice_id`.
+                                speed:
+                                  type: number
+                                  description: >-
+                                    Speech speed multiplier. The valid range is
+                                    `0.7` to `1.2`.
+                              required:
+                                - provider
+                                - provider_voice_id
+                                - model
+                            visual:
+                              type: object
+                              description: >-
+                                Visual rendering settings. Required when this
+                                avatar is used for video rendering.
+                              properties:
+                                source_images:
+                                  type: array
+                                  description: >-
+                                    Registered source images available for this
+                                    avatar. Required when image-based avatar
+                                    video rendering is used.
+                                  items:
+                                    type: object
+                                    description: >-
+                                      One source image that can be selected for
+                                      avatar video rendering.
+                                    properties:
+                                      source_image_id:
+                                        type: string
+                                        description: >-
+                                          Caller-defined source image identifier,
+                                          unique within the avatar.
+                                      url:
+                                        type: string
+                                        description: >-
+                                          Publicly accessible HTTPS URL of the
+                                          source image. Its aspect ratio should
+                                          match `output.aspect_ratio` (`9:16` or
+                                          `16:9`)—a mismatched image will
+                                          noticeably degrade video quality.
+                                      description:
+                                        type: string
+                                        description: >-
+                                          Optional description of the person,
+                                          pose, and scene.
+                                      media_type:
+                                        type: string
+                                        description: >-
+                                          Image media type, such as `image/png` or
+                                          `image/jpeg`.
+                                      opening:
+                                        type: object
+                                        description: >-
+                                          Optional opening speech or action.
+                                          Supply `dialogue`, `action`, or both. It
+                                          runs when this image is selected and
+                                          begins rendering.
+                                        properties:
+                                          dialogue:
+                                            type: string
+                                            description: Exact opening words to synthesize.
+                                          action:
+                                            type: object
+                                            properties:
+                                              prompt:
+                                                type: string
+                                                description: >-
+                                                  Visual motion prompt for the opening
+                                                  action.
+                                              duration_ms:
+                                                type: integer
+                                                minimum: 1
+                                                description: Opening action duration in milliseconds.
+                                            required:
+                                              - prompt
+                                              - duration_ms
+                                            description: >-
+                                              Opening movement, described by a prompt
+                                              and duration.
+                                          starting_at:
+                                            type: integer
+                                            minimum: 0
+                                            default: 0
+                                            description: >-
+                                              Delay in milliseconds before the opening
+                                              begins, measured from the first frame
+                                              becoming available.
+                                    required:
+                                      - source_image_id
+                                      - media_type
+                                      - url
+                                default_source_image_id:
+                                  type: string
+                                  description: >-
+                                    Default image ID. Omit when the avatar has
+                                    one source image; otherwise set this or
+                                    `session.source_image_id`.
+                              required:
+                                - source_images
+                          required:
+                            - avatar_id
+                        minItems: 1
+                      delivery:
+                        type: object
+                        description: >-
+                          Media connection details returned by the server.
+                          Present when `session.mode` is `video_avatar`.
+                        properties:
+                          media:
+                            type: object
+                            description: >-
+                              Temporary media connection details. Present when
+                              avatar video media is available. Exactly one media
+                              variant is returned, selected by `transport`.
+                              These details are scoped to this session and are
+                              not `provider` account credentials.
+                            properties:
+                              transport:
+                                type: string
+                                description: >-
+                                  Discriminator that selects which media variant
+                                  is returned. Supported values are `trtc` and
+                                  `agora`.
+                              trtc:
+                                type: object
+                                description: >-
+                                  TRTC room join details for the `trtc` media
+                                  variant.
+                                properties:
+                                  sdk_app_id:
+                                    type: string
+                                    description: >-
+                                      TRTC application id used by the client
+                                      SDK. Returned as a string, consistent with
+                                      the convention that 64-bit integers may be
+                                      returned as strings.
+                                  room_id:
+                                    type: string
+                                    description: TRTC room id for this session.
+                                  user_id:
+                                    type: string
+                                    description: TRTC user id assigned to the client.
+                                  user_sig:
+                                    type: string
+                                    description: >-
+                                      Session-scoped signature for joining the
+                                      TRTC room.
+                                  publisher_user_id:
+                                    type: string
+                                    description: >-
+                                      User id of the avatar video publisher in
+                                      the TRTC room. Subscribe only to this user
+                                      id to receive the avatar stream.
+                                required:
+                                  - sdk_app_id
+                                  - room_id
+                                  - user_id
+                                  - user_sig
+                                  - publisher_user_id
+                              agora:
+                                type: object
+                                description: >-
+                                  Agora channel join details for the `agora`
+                                  media variant.
+                                properties:
+                                  app_id:
+                                    type: string
+                                    description: >-
+                                      Agora application id used by the client
+                                      SDK.
+                                  channel_name:
+                                    type: string
+                                    description: Agora channel name for this session.
+                                  token:
+                                    type: string
+                                    description: >-
+                                      Session-scoped token for joining the Agora
+                                      channel.
+                                  user_id:
+                                    type: string
+                                    description: Agora user id assigned to the client.
+                                  publisher_user_id:
+                                    type: string
+                                    description: >-
+                                      User id of the avatar video publisher in
+                                      the Agora channel. Subscribe only to this
+                                      user id to receive the avatar stream.
+                                required:
+                                  - app_id
+                                  - channel_name
+                                  - token
+                                  - user_id
+                                  - publisher_user_id
+                            required:
+                              - transport
+                      model:
+                        type: string
+                        description: The model from the request.
+                      expires_at:
+                        type: string
+                        format: date-time
+                        description: >-
+                          Time at which the session and its control credential
+                          expire. Present when the server returns a fixed
+                          expiration; otherwise omitted.
+                      recording_mode:
+                        type: string
+                        description: 'Effective recording mode: `on` or `off`.'
+                    required:
+                      - session_id
+                      - status
+                      - auto_close
+                      - session
+                      - control
+                      - conversation
+                      - avatars
+                      - model
+                      - output
+              example:
+                code: 0
+                message: success
+                data:
+                  session_id: avatar-session-123
+                  status: active
+                  session:
+                    mode: video_avatar
+                    active_avatar_id: companion
+                    source_image_id: front
+                  control:
+                    url: >-
+                      wss://api.vivix.ai/v1/realtime-avatar/control?session_id=avatar-session-123
+                    client_secret: ctl_...
+                  output:
+                    aspect_ratio: '9:16'
+                    resolution: 720p
+                  delivery:
+                    media:
+                      transport: trtc
+                      trtc:
+                        sdk_app_id: '1400000000'
+                        room_id: avatar-session-123
+                        user_id: viewer
+                        user_sig: ...
+                        publisher_user_id: publisher_xxx
+                  model: vivix-a1-stream
+                  expires_at: '2026-07-16T10:05:00Z'
+                  recording_mode: 'off'
+                  auto_close:
+                    disconnected_timeout_seconds: 0
+                    interaction_idle_timeout_seconds: 0
+                  conversation:
+                    tools: []
+                    turn_detection:
+                      type: server_vad
+                      silence_duration_ms: 500
+                  avatars:
+                    - avatar_id: companion
+                      persona: >-
+                        You are a warm, curious conversation companion. Speak in
+                        relaxed English and keep everyday replies brief.
+                        Acknowledge corrections without making excuses. Use
+                        small smiles and gentle nods, then let your hands rest
+                        while listening.
+                      visual:
+                        source_images:
+                          - source_image_id: front
+                            url: >-
+                              https://static.vivi-x.ai/images/2026/07/20/b9b8e89651cd24ad.png
+                            media_type: image/png
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Your Vivix API key. Keep it on your server.
+
+````
+
+This documentation is built and hosted on [Mintlify](https://mintlify.com), a developer documentation platform.
